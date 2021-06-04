@@ -1,35 +1,54 @@
 package ignore
 
 import (
-	"fmt"
+	"bufio"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"strings"
 
-	"github.com/go-git/go-billy/v5/osfs"
-	"github.com/joelanford/ignore/internal/gitignore"
-)
+	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
+	)
 
-func NewMatcher(root, ignoreFile string) (*Matcher, error) {
-	indexfs := osfs.New(root)
-	rootSegments := strings.Split(root, string(filepath.Separator))
-	patterns, err := gitignore.ReadCustomPatterns(indexfs, ignoreFile, nil)
+func NewMatcher(root, ignoreFile string) (gitignore.Matcher, error) {
+	patterns := []gitignore.Pattern{}
+	if err := fs.WalkDir(os.DirFS(root), ".", func(path string, d fs.DirEntry, err error) error {
+		if d.Name() != ignoreFile || d.IsDir() {
+			return nil
+		}
+		ps, err := loadPatterns(root, path)
+		if err != nil {
+			return err
+		}
+		patterns = append(patterns, ps...)
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	return gitignore.NewMatcher(patterns), nil
+}
+
+func loadPatterns(root, path string) ([]gitignore.Pattern, error) {
+	file := filepath.Join(root, path)
+	domain := strings.Split(filepath.Dir(path), string(filepath.Separator))
+	f, err := os.Open(file)
 	if err != nil {
-		return nil, fmt.Errorf("read patterns: %v", err)
+		return nil, err
 	}
-	base := gitignore.NewMatcher(patterns)
-	return &Matcher{rootSegments, base}, nil
-}
+	defer f.Close()
 
-type Matcher struct {
-	root    []string
-	matcher gitignore.Matcher
-}
+	patterns := []gitignore.Pattern{}
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
 
-func (m Matcher) Match(path string, isDir bool) bool {
-	if !filepath.IsAbs(path) {
-		rootPath := strings.Join(m.root, string(filepath.Separator))
-		path = filepath.Clean(filepath.Join(rootPath, path))
+		if strings.HasPrefix(line, "#") || line == "" {
+			continue
+		}
+		patterns = append(patterns, gitignore.ParsePattern(line, domain))
 	}
-	pathSegments := strings.Split(path, string(filepath.Separator))
-	return m.matcher.Match(pathSegments, isDir)
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return patterns, nil
 }
