@@ -3,16 +3,30 @@ package ignore
 import (
 	"bufio"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/go-git/go-git/v5/plumbing/format/gitignore"
-	)
+)
 
-func NewMatcher(root, ignoreFile string) (gitignore.Matcher, error) {
+type Matcher interface {
+	Match(path string, isDir bool) bool
+}
+
+type matcher struct {
+	m gitignore.Matcher
+}
+
+func (m matcher) Match(path string, isDir bool) bool {
+	return m.m.Match(strings.Split(path, string(filepath.Separator)), isDir)
+}
+
+func NewMatcher(root fs.FS, ignoreFile string) (Matcher, error) {
 	patterns := []gitignore.Pattern{}
-	if err := fs.WalkDir(os.DirFS(root), ".", func(path string, d fs.DirEntry, err error) error {
+	if err := fs.WalkDir(root, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if d.Name() != ignoreFile || d.IsDir() {
 			return nil
 		}
@@ -25,13 +39,15 @@ func NewMatcher(root, ignoreFile string) (gitignore.Matcher, error) {
 	}); err != nil {
 		return nil, err
 	}
-	return gitignore.NewMatcher(patterns), nil
+	return &matcher{gitignore.NewMatcher(patterns)}, nil
 }
 
-func loadPatterns(root, path string) ([]gitignore.Pattern, error) {
-	file := filepath.Join(root, path)
+func loadPatterns(root fs.FS, path string) ([]gitignore.Pattern, error) {
 	domain := strings.Split(filepath.Dir(path), string(filepath.Separator))
-	f, err := os.Open(file)
+	if len(domain) == 1 && domain[0] == "." {
+		domain = []string{}
+	}
+	f, err := root.Open(path)
 	if err != nil {
 		return nil, err
 	}
