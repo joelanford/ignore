@@ -22,7 +22,7 @@ func (m matcher) Match(path string, isDir bool) bool {
 }
 
 func NewMatcher(root fs.FS, ignoreFile string) (Matcher, error) {
-	patterns := []gitignore.Pattern{}
+	patterns := []gitignore.Pattern{gitignore.ParsePattern(ignoreFile, []string{})}
 	if err := fs.WalkDir(root, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
