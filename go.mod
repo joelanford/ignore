@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/go-git/go-git/v5 v5.3.0
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.8.4
 )
 
 require (
@@ -15,5 +15,5 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	golang.org/x/net v0.0.0-20210326060303-6b1517762897 // indirect
 	gopkg.in/warnings.v0 v0.1.2 // indirect
-	gopkg.in/yaml.v2 v2.3.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
