@@ -65,4 +65,4 @@ jobs:
       with:
         fetch-depth: 0
     - name: Run go-apidiff
-      uses: joelanford/go-apidiff@master
+      uses: joelanford/go-apidiff@v0.8.2
