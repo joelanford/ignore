@@ -7,6 +7,8 @@ import (
 	"testing/fstest"
 )
 
+const testIgnoreFile = ".indexignore"
+
 func TestMatcher(t *testing.T) {
 	type spec struct {
 		ignoreFile    string
@@ -16,7 +18,7 @@ func TestMatcher(t *testing.T) {
 
 	specs := []spec{
 		{
-			ignoreFile: ".indexignore",
+			ignoreFile: testIgnoreFile,
 			fs: fstest.MapFS{
 				".indexignore": &fstest.MapFile{
 					Data: []byte(`
